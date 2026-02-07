@@ -1,1 +1,2 @@
-driver/build
+driver/build/
+driver/compile_commands.json
