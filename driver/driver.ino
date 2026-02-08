@@ -11,8 +11,44 @@ void setClock(uint8_t val) {
   digitalWrite(clk_pin, val);
 }
 
-void transferBit(uint8_t mosiBit) {
+// perform a full bit transfer. returns miso
+uint8_t transferBit(uint8_t mosi_bit) {
+    // Clock is low, prepare data for chip
+    digitalWrite(mosi_pin, mosi_bit);
+    delayMicroseconds(clock_period);
 
+    setClock(HIGH);
+    delayMicroseconds(clock_period);
+
+    // get miso bit
+    uint8_t miso_bit = digitalRead(miso_pin);
+
+    // data has been sampled by chip, set low
+    setClock(LOW);
+    delayMicroseconds(clock_period);
+
+    return miso_bit;
+}
+
+uint8_t transferByte(uint8_t mosi_byte) {
+  uint8_t miso_byte = 0;
+  for (int i=0; i<8; i++) {
+    // Clock is low, prepare data for chip
+    digitalWrite(mosi_pin, (mosi_byte >> (7-i)) & 1);
+    delayMicroseconds(clock_period);
+
+    setClock(HIGH);
+    delayMicroseconds(clock_period);
+
+    // get miso bit
+    miso_byte = (miso_byte << 1) | (digitalRead(miso_pin) & 1);
+
+    // data has been sampled by chip, set low
+    setClock(LOW);
+    delayMicroseconds(clock_period);
+  }
+
+    return miso_byte;
 }
 
 // activate cs pin
@@ -36,50 +72,22 @@ void initialize() {
   delayMicroseconds(clock_period);
 
   // send 0x9F
-  for (int i = 0; i < 8; i++) {
-    // Clock is low, prepare data for chip
-    digitalWrite(mosi_pin, hex_9F[i]);
-    delayMicroseconds(clock_period);
+  transferByte(0x9f);
 
-    setClock(HIGH);
-    delayMicroseconds(clock_period);
-    // data has been sampled by chip, set low
-    setClock(LOW);
-    delayMicroseconds(clock_period);
-  }
-
-  // read 3 bytes 
-  for (int j = 0; j < 3; j++) {
-    Serial.println("OUTPUT BYTE:");
-    for (int i = 0; i < 8; i++) {
-
-      // Clock is low present dummy bit
-      digitalWrite(mosi_pin, LOW);
-      delayMicroseconds(clock_period);
-
-      setClock(HIGH);
-      delayMicroseconds(clock_period);
-
-      // reads miso after rising clock
-      uint8_t t1 = digitalRead(miso_pin);
-      Serial.print(t1);
-
-      setClock(LOW);
-      delayMicroseconds(clock_period);
-    }
-    Serial.println("");
-  }
+  // get result
+  Serial.println("\nOUTPUT: ");
+  Serial.println(transferByte(0xFF));
+  Serial.println(transferByte(0xFF));
+  Serial.println(transferByte(0xFF));
 
   digitalWrite(cs_pin, HIGH);
 }
-
-void spi_step() {}
 
 void setup() {
   pinMode(cs_pin, OUTPUT);
   pinMode(clk_pin, OUTPUT);
   pinMode(mosi_pin, OUTPUT);
-  pinMode(miso_pin, INPUT_PULLUP); // minimal change: helps when MISO floats
+  pinMode(miso_pin, INPUT_PULLUP); 
 
   Serial.begin(9600);
 
