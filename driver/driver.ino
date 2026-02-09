@@ -11,24 +11,30 @@ void setClock(uint8_t val) {
   digitalWrite(clk_pin, val);
 }
 
-// perform a full bit transfer. returns miso
-uint8_t transferBit(uint8_t mosi_bit) {
-    // Clock is low, prepare data for chip
-    digitalWrite(mosi_pin, mosi_bit);
-    delayMicroseconds(clock_period);
+// takes in a two char str represnting hex
+// returns uint value
+uint8_t hexToInt(char str[3]) {
+  int ret = 0;
+  for (int i=1; i>=0; i++) {
+    ret *= 16; // treats leftmost digit as 16s place hex
 
-    setClock(HIGH);
-    delayMicroseconds(clock_period);
+    char ch = str[i];
 
-    // get miso bit
-    uint8_t miso_bit = digitalRead(miso_pin);
+    // check if in bounds for hex
+    // add value if so
+    if (isdigit(ch)) {
+      ret += ch - '0';
+    }
+    if ((ch >= 'a' && ch <= 'f')) {
+      ret += ch - 'a';
+    } else if (ch >= 'A' && ch <= 'F') {
+      ret += ch - 'A';
+    } else return 0;
 
-    // data has been sampled by chip, set low
-    setClock(LOW);
-    delayMicroseconds(clock_period);
-
-    return miso_bit;
+  }
+  return ret;
 }
+
 
 uint8_t transferByte(uint8_t mosi_byte) {
   uint8_t miso_byte = 0;
@@ -51,6 +57,30 @@ uint8_t transferByte(uint8_t mosi_byte) {
     return miso_byte;
 }
 
+void interactive() {
+  while (1) {
+    // get byte in string form
+    Serial.println("Enter 2 digit hex value");
+    char buff[3];
+    String str_byte = Serial.readString();
+    uint8_t operation = hexToInt(buff);
+    Serial.println(str_byte);
+
+    // get read 
+    Serial.println("Enter number of bytes to read");
+    char ch_count;
+    Serial.readBytes(&ch_count, 1);
+
+    // transfer byte
+    transferByte(operation);
+
+    // read 
+    for (int i=0; i<(int)ch_count; i++) {
+      Serial.println(transferByte(0xFF));
+    }
+  }
+}
+
 // activate cs pin
 void initialize() {
   // run with spi mode 0
@@ -71,14 +101,16 @@ void initialize() {
   setClock(LOW);
   delayMicroseconds(clock_period);
 
-  // send 0x9F
-  transferByte(0x9f);
+  interactive();
 
-  // get result
-  Serial.println("\nOUTPUT: ");
-  Serial.println(transferByte(0xFF));
-  Serial.println(transferByte(0xFF));
-  Serial.println(transferByte(0xFF));
+  // // send 0x9F
+  // transferByte(0xFF);
+  //
+  // // get result
+  // Serial.println("\nOUTPUT: ");
+  // Serial.println(transferByte(0xFF));
+  // Serial.println(transferByte(0xFF));
+  // Serial.println(transferByte(0xFF));
 
   digitalWrite(cs_pin, HIGH);
 }
@@ -90,6 +122,7 @@ void setup() {
   pinMode(miso_pin, INPUT_PULLUP); 
 
   Serial.begin(9600);
+  Serial.setTimeout(9999);
 
   // hello world test, read some data from the board
   initialize();
