@@ -68,14 +68,13 @@ void interactive() {
 
     // get read 
     Serial.println("Enter number of bytes to read");
-    char ch_count;
-    Serial.readBytes(&ch_count, 1);
+    int count = Serial.read();
 
     // transfer byte
     transferByte(operation);
 
     // read 
-    for (int i=0; i<(int)ch_count; i++) {
+    for (int i=0; i<count; i++) {
       Serial.println(transferByte(0xFF));
     }
   }
