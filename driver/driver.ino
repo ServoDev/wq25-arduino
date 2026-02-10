@@ -99,8 +99,8 @@ void interactive() {
     // get read 
     Serial.println("Enter number of bytes to read");
     while (Serial.available() == 0);
-    int count = Serial.read();
-    count -= 48;
+    String str_count = Serial.readString();
+    int count = str_count.toInt();
 
     // debug
     str_byte.trim();
