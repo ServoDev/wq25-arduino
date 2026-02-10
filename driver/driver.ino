@@ -13,22 +13,22 @@ void setClock(uint8_t val) {
 
 // takes in a two char str represnting hex
 // returns uint value
-uint8_t hexToInt(char str[3]) {
+uint8_t hexToInt(String str) {
   int ret = 0;
-  for (int i=1; i>=0; i++) {
-    ret *= 16; // treats leftmost digit as 16s place hex
+  for (int i=0; i<2; i++) {
+    ret *= 16; // treats left digit as 16s place hex
 
-    char ch = str[i];
+    char ch = str.charAt(i);
 
     // check if in bounds for hex
     // add value if so
     if (isdigit(ch)) {
       ret += ch - '0';
     }
-    if ((ch >= 'a' && ch <= 'f')) {
-      ret += ch - 'a';
+    else if ((ch >= 'a' && ch <= 'f')) {
+      ret += 10+(ch - 'a');
     } else if (ch >= 'A' && ch <= 'F') {
-      ret += ch - 'A';
+      ret += 10+(ch - 'A');
     } else return 0;
 
   }
@@ -57,31 +57,9 @@ uint8_t transferByte(uint8_t mosi_byte) {
     return miso_byte;
 }
 
-void interactive() {
-  while (1) {
-    // get byte in string form
-    Serial.println("Enter 2 digit hex value");
-    char buff[3];
-    String str_byte = Serial.readString();
-    uint8_t operation = hexToInt(buff);
-    Serial.println(str_byte);
 
-    // get read 
-    Serial.println("Enter number of bytes to read");
-    int count = Serial.read();
-
-    // transfer byte
-    transferByte(operation);
-
-    // read 
-    for (int i=0; i<count; i++) {
-      Serial.println(transferByte(0xFF));
-    }
-  }
-}
-
-// activate cs pin
-void initialize() {
+// call before sending op
+void spiStart() {
   // run with spi mode 0
   digitalWrite(cs_pin, HIGH);
   setClock(LOW);
@@ -93,25 +71,71 @@ void initialize() {
   digitalWrite(cs_pin, LOW);
   delayMicroseconds(clock_period);
 
-  // jedec ID command
-  int hex_9F[8] = { 1, 0, 0, 1, 1, 1, 1, 1 }; // msb at index 0
-
   // start loops with clock low
   setClock(LOW);
   delayMicroseconds(clock_period);
+}
+
+// call after done with op
+void spiEnd() {
+  digitalWrite(cs_pin, HIGH);
+}
+
+// loop where operations can be made from serial monitor
+void interactive() {
+  while (1) {
+    spiStart();
+
+    // get byte in string form
+    Serial.println("Enter 2 digit hex value");
+    // wait for there to be data
+    while (Serial.available() == 0);
+    // read the data into board
+    String str_byte = Serial.readString();
+    // get int val from str in hex format
+    uint8_t operation = hexToInt(str_byte);
+
+
+    // get read 
+    Serial.println("Enter number of bytes to read");
+    while (Serial.available() == 0);
+    int count = Serial.read();
+    count -= 48;
+
+    // debug
+    str_byte.trim();
+    Serial.println(str_byte);
+    Serial.print("Op: ");
+    Serial.println(operation);
+    Serial.print("Count: ");
+    Serial.println(count);
+
+    // transfer byte
+    transferByte(operation);
+
+    // read 
+    Serial.println("\nOUTPUT: ");
+    for (int i=0; i<count; i++) {
+      Serial.println(transferByte(0xFF));
+    }
+
+    spiEnd();
+  }
+}
+
+// activate cs pin
+void initialize() {
 
   interactive();
 
   // // send 0x9F
-  // transferByte(0xFF);
-  //
+  // transferByte(0x9F);
   // // get result
   // Serial.println("\nOUTPUT: ");
   // Serial.println(transferByte(0xFF));
   // Serial.println(transferByte(0xFF));
   // Serial.println(transferByte(0xFF));
 
-  digitalWrite(cs_pin, HIGH);
 }
 
 void setup() {
@@ -121,7 +145,8 @@ void setup() {
   pinMode(miso_pin, INPUT_PULLUP); 
 
   Serial.begin(9600);
-  Serial.setTimeout(9999);
+  Serial.setTimeout(10);
+
 
   // hello world test, read some data from the board
   initialize();
