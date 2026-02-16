@@ -11,6 +11,7 @@ void setClock(uint8_t val) {
   digitalWrite(clk_pin, val);
 }
 
+
 // takes in a two char str represnting hex
 // returns uint value
 uint8_t hexToInt(String str) {
@@ -86,47 +87,73 @@ void interactive() {
   while (1) {
     spiStart();
 
-    // get byte in string form
-    Serial.println("Enter 2 digit hex value");
-    // wait for there to be data
-    while (Serial.available() == 0);
-    // read the data into board
-    String str_byte = Serial.readString();
-    // get int val from str in hex format
-    uint8_t operation = hexToInt(str_byte);
-
-
-    // get read 
-    Serial.println("Enter number of bytes to read");
+    // get write count 
+    Serial.println("Enter number of bytes to write");
     while (Serial.available() == 0);
     String str_count = Serial.readString();
     int count = str_count.toInt();
 
-    // debug
-    str_byte.trim();
-    Serial.println(str_byte);
-    Serial.print("Op: ");
-    Serial.println(operation);
-    Serial.print("Count: ");
-    Serial.println(count);
+    // write
+    for (int i=0; i<count; i++) {
+      // get byte in string form
+      Serial.println("Enter 2 digit hex value");
+      // wait for there to be data
+      while (Serial.available() == 0);
+      // read the data into board
+      String str_byte = Serial.readString();
+      // get int val from str in hex format
+      uint8_t operation = hexToInt(str_byte);
 
-    // transfer byte
-    transferByte(operation);
+      // transfer byte
+      transferByte(operation);
+    }
+
+
+    // get read count   
+    Serial.println("Enter number of bytes to read");
+    while (Serial.available() == 0);
+    str_count = Serial.readString();
+    count = str_count.toInt();
+
 
     // read 
     Serial.println("\nOUTPUT: ");
     for (int i=0; i<count; i++) {
-      Serial.println(transferByte(0xFF));
+      Serial.println(transferByte(0x00));
     }
 
     spiEnd();
   }
 }
 
+// read data at specified addr
+void opReadData(int addr, int count) {
+  // TODO addr validation
+
+  const int opCode = 0x03;
+  transferByte(opCode);
+
+  // turn addr into 3 transfer byte calls
+  for (int i=0; i<3; i++) {
+
+  }
+
+  // read the data
+  for (int i=0; i<count; i++) {
+
+  }
+}
+
 // activate cs pin
 void initialize() {
 
-  interactive();
+  // interactive();
+
+  spiStart();
+  opReadData(0x03a, 10);
+
+  spiEnd();
+
 
   // // send 0x9F
   // transferByte(0x9F);
